@@ -1,0 +1,21 @@
+function _extends(){return _extends=Object.assign||function(a){for(var b,c=1;c<arguments.length;c++)for(var d in b=arguments[c],b)Object.prototype.hasOwnProperty.call(b,d)&&(a[d]=b[d]);return a},_extends.apply(this,arguments)}function _assertThisInitialized(a){if(void 0===a)throw new ReferenceError("this hasn't been initialised - super() hasn't been called");return a}function _inheritsLoose(a,b){a.prototype=Object.create(b.prototype),a.prototype.constructor=a,a.__proto__=b}/* eslint-disable compat/compat */ /* eslint-disable react/no-unsafe */ /* eslint-disable promise/always-return */ /* eslint-disable react/jsx-handler-names */ /* eslint-disable react/no-access-state-in-setstate */ /* eslint-disable react/sort-comp */ /* eslint-disable camelcase */ /* eslint-disable react/destructuring-assignment */ /* eslint-disable sort-keys */ /* eslint-disable react/forbid-prop-types */ /**
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */import React from"react";import _ from"lodash";import PropTypes from"prop-types";import{SupersetClient}from"@superset-ui/connection";import DeckGLContainer from"../DeckGLContainer";import{getExploreLongUrl}from"../utils/explore";import layerGenerators from"../layers";var propTypes={formData:PropTypes.object.isRequired,payload:PropTypes.object.isRequired,setControlValue:PropTypes.func.isRequired,viewport:PropTypes.object.isRequired,onAddFilter:PropTypes.func,setTooltip:PropTypes.func,onSelect:PropTypes.func},defaultProps={onAddFilter:function onAddFilter(){},setTooltip:function setTooltip(){},onSelect:function onSelect(){}},DeckMulti=/*#__PURE__*/function(a){function b(b){var c;return c=a.call(this,b)||this,c.state={subSlicesLayers:{}},c.onViewportChange=c.onViewportChange.bind(_assertThisInitialized(c)),c}_inheritsLoose(b,a);var c=b.prototype;return c.componentDidMount=function componentDidMount(){var a=this.props,b=a.formData,c=a.payload;this.loadLayers(b,c)},c.UNSAFE_componentWillReceiveProps=function UNSAFE_componentWillReceiveProps(a){var b=a.formData,c=a.payload,d=!_.isEqual(this.props.formData.deck_slices,a.formData.deck_slices);d&&this.loadLayers(b,c)},c.onViewportChange=function onViewportChange(a){this.setState({viewport:a})},c.loadLayers=function loadLayers(a,b,c){var d=this;this.setState({subSlicesLayers:{},viewport:c}),b.data.slices.forEach(function(b){// Filters applied to multi_deck are passed down to underlying charts
+// note that dashboard contextual information (filter_immune_slices and such) aren't
+// taken into consideration here
+var c=[].concat(b.form_data.filters||[],a.filters||[],a.extra_filters||[]),e=_extends({},b,{form_data:_extends({},b.form_data,{filters:c})});SupersetClient.get({endpoint:getExploreLongUrl(e.form_data,"json")}).then(function(a){var b,c=a.json,f=layerGenerators[e.form_data.viz_type](e.form_data,c,d.props.onAddFilter,d.props.setTooltip,[],d.props.onSelect);d.setState({subSlicesLayers:_extends({},d.state.subSlicesLayers,(b={},b[e.slice_id]=f,b))})}).catch(function(){})})},c.render=function render(){var a=this.props,b=a.payload,c=a.formData,d=a.setControlValue,e=this.state.subSlicesLayers,f=Object.values(e);return React.createElement(DeckGLContainer,{mapboxApiAccessToken:b.data.mapboxApiKey,viewport:this.state.viewport||this.props.viewport,onViewportChange:this.onViewportChange,layers:f,mapStyle:c.mapbox_style,setControlValue:d})},b}(React.PureComponent);DeckMulti.propTypes=propTypes,DeckMulti.defaultProps=defaultProps;export default DeckMulti;
