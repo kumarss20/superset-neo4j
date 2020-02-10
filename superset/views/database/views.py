@@ -32,6 +32,7 @@ from superset.utils import core as utils
 from superset.views.base import DeleteMixin, SupersetModelView, YamlExportMixin
 
 from .forms import CsvToDatabaseForm
+from .forms import Neo4jDatabaseForm
 from .mixins import DatabaseMixin
 from .validators import schema_allows_csv_upload, sqlalchemy_uri_validator
 
@@ -153,6 +154,78 @@ class CsvToDatabaseView(SimpleFormView):
             'CSV file "%(csv_filename)s" uploaded to table "%(table_name)s" in '
             'database "%(db_name)s"',
             csv_filename=csv_filename,
+            table_name=form.name.data,
+            db_name=table.database.database_name,
+        )
+        flash(message, "info")
+        stats_logger.incr("successful_csv_upload")
+        return redirect("/tablemodelview/list/")
+
+class Neo4jToDatabaseView(SimpleFormView):
+    form = Neo4jDatabaseForm
+    form_template = "superset/form_view/csv_to_database_view/edit.html"
+    form_title = _("Neo4j to Database configuration")
+    add_columns = ["database", "table_name"]
+
+    def form_get(self, form):
+        form.if_exists.data = "fail"
+
+    def form_post(self, form):
+        database = form.con.data
+  
+        try:
+
+            table_name = form.name.data
+
+            con = form.data.get("con")
+            database = (
+                db.session.query(models.Database).filter_by(id=con.data.get("id")).one()
+            )
+            database.db_engine_spec.create_table_from_neo4j(form, database)
+
+            table = (
+                db.session.query(SqlaTable)
+                .filter_by(
+                    table_name=table_name,
+                    database_id=database.id,
+                )
+                .one_or_none()
+            )
+            if table:
+                table.fetch_metadata()
+            if not table:
+                table = SqlaTable(table_name=table_name)
+                table.database = database
+                table.database_id = database.id
+                table.user_id = g.user.id
+                table.fetch_metadata()
+                db.session.add(table)
+            db.session.commit()
+        except Exception as e:  # pylint: disable=broad-except
+            db.session.rollback()
+            try:
+                os.remove("")
+            except OSError:
+                pass
+            message = _(
+                'Unable to upload to table '
+                '"%(table_name)s" in database "%(db_name)s". '
+                "Error message: %(error_msg)s",
+               # filename=csv_filename,
+                table_name=form.name.data,
+                db_name=database.database_name,
+                error_msg=str(e),
+            )
+
+            flash(message, "danger")
+            stats_logger.incr("failed_csv_upload")
+            return redirect("/neo4jtodatabaseview/form")
+
+       # os.remove(path)
+        # Go back to welcome page / splash screen
+        message = _(
+            'Neo4j data uploaded to table "%(table_name)s" in '
+            'database "%(db_name)s"',
             table_name=form.name.data,
             db_name=table.database.database_name,
         )

@@ -53,11 +53,7 @@ class TimeGrain(NamedTuple):  # pylint: disable=too-few-public-methods
     function: str
     duration: Optional[str]
 
-driver = GraphDatabase.driver("bolt://192.168.0.96:7687", auth=basic_auth("admin", "admin"))
-session = driver.session()
-
-
-QueryStatus = utils.QueryStatus
+QueryStatus = utils.QueryStatus 
 config = app.config
 
 builtin_time_grains: Dict[Optional[str], str] = {
@@ -366,10 +362,24 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
         kwargs["filepath_or_buffer"] = (
             config["UPLOAD_FOLDER"] + kwargs["filepath_or_buffer"]
         )
+
         kwargs["encoding"] = "utf-8"
         kwargs["iterator"] = True
+        chunks = pd.read_csv(**kwargs)
+        df = pd.concat(chunk for chunk in chunks)
+        return df
 
-        result = session.run("MATCH (a:Ship)-[:HAS_VOYAGE]-(v:Voyage) RETURN a.ship_code as ship_code,COUNT(v) as no_of_voyage")
+    @staticmethod
+    def neo4j_to_df(**kwargs) -> pd.DataFrame:
+        """ Read neo4j data into Pandas DataFrame
+        :param kwargs: params to be passed to neo4j
+        :return: Pandas DataFrame containing data from neo4j
+        """
+ 
+        driver = GraphDatabase.driver(kwargs["neo_con_string"], auth=basic_auth(kwargs["username"], kwargs["password"]))
+        session = driver.session()
+
+        result = session.run( kwargs["cypher"])
         df = pd.DataFrame(result.records(), columns=result.keys())
         session.close()
     
@@ -435,6 +445,36 @@ class BaseEngineSpec:  # pylint: disable=too-many-public-methods
             "chunksize": 10000,
         }
         cls.df_to_sql(**df_to_sql_kwargs)
+
+    @classmethod
+    def create_table_from_neo4j(cls, form, database) -> None:
+        """
+        Create table from result of neo4j cypher query. Note: this method does not create
+        metadata for the table.
+
+        :param form: Parameters defining how to process data
+        :param database: Database model object for the target database
+        """
+
+        neo4j_to_df_kwargs = {
+            "neo_con_string": form.neo_con_string.data,
+            "cypher": form.cypher.data,
+            "username": form.username.data,
+            "password": form.password.data,
+        }
+        df = cls.neo4j_to_df(**neo4j_to_df_kwargs)
+
+        engine = cls.get_engine(database)
+
+        df_to_sql_kwargs = {
+            "df": df,
+            "name": form.name.data,
+            "con": engine,
+            "if_exists": form.if_exists.data,
+            "chunksize": 10000,
+        }
+        cls.df_to_sql(**df_to_sql_kwargs)
+
 
     @classmethod
     def convert_dttm(cls, target_type: str, dttm: datetime) -> Optional[str]:

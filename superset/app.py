@@ -157,7 +157,7 @@ class SupersetAppInitializer:
             DashboardModelViewAsync,
         )
         from superset.views.database.api import DatabaseRestApi
-        from superset.views.database.views import DatabaseView, CsvToDatabaseView
+        from superset.views.database.views import DatabaseView, CsvToDatabaseView, Neo4jToDatabaseView
         from superset.views.datasource import Datasource
         from superset.views.log.api import LogRestApi
         from superset.views.log.views import LogModelView
@@ -262,6 +262,7 @@ class SupersetAppInitializer:
         appbuilder.add_view_no_menu(Api)
         appbuilder.add_view_no_menu(CssTemplateAsyncModelView)
         appbuilder.add_view_no_menu(CsvToDatabaseView)
+        appbuilder.add_view_no_menu(Neo4jToDatabaseView)
         appbuilder.add_view_no_menu(Dashboard)
         appbuilder.add_view_no_menu(DashboardModelViewAsync)
         appbuilder.add_view_no_menu(Datasource)
@@ -324,15 +325,17 @@ class SupersetAppInitializer:
             category_label=__("Sources"),
             category_icon="fa-wrench",
         )
-        # appbuilder.add_link(
-        #     "Neo4j",
-        #     label=__("Neo4j"),
-        #     href="/csvtodatabaseview/form",
-        #     icon="fa-upload",
-        #     category="Sources",
-        #     category_label=__("Sources"),
-        #     category_icon="fa-wrench",
-        # )
+
+        appbuilder.add_link(
+            "Neo4j",
+            label=__("Neo4J"),
+            href="/neo4jtodatabaseview/form",
+            icon="fa-upload",
+            category="Sources",
+            category_label=__("Sources"),
+            category_icon="fa-wrench",
+        )
+      
         
         # Conditionally setup log views
         #

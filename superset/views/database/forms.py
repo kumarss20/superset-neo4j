@@ -207,3 +207,139 @@ class CsvToDatabaseForm(DynamicForm):
         validators=[Optional()],
         widget=BS3TextFieldWidget(),
     )
+
+class Neo4jDatabaseForm(DynamicForm):
+    # pylint: disable=E0211
+    def csv_allowed_dbs():  # type: ignore
+        csv_allowed_dbs = []
+        csv_enabled_dbs = (
+            db.session.query(models.Database).filter_by(allow_csv_upload=True).all()
+        )
+        for csv_enabled_db in csv_enabled_dbs:
+            if CsvToDatabaseForm.at_least_one_schema_is_allowed(csv_enabled_db):
+                csv_allowed_dbs.append(csv_enabled_db)
+        return csv_allowed_dbs
+
+    @staticmethod
+    def at_least_one_schema_is_allowed(database):
+        """
+        If the user has access to the database or all datasource
+            1. if schemas_allowed_for_csv_upload is empty
+                a) if database does not support schema
+                    user is able to upload csv without specifying schema name
+                b) if database supports schema
+                    user is able to upload csv to any schema
+            2. if schemas_allowed_for_csv_upload is not empty
+                a) if database does not support schema
+                    This situation is impossible and upload will fail
+                b) if database supports schema
+                    user is able to upload to schema in schemas_allowed_for_csv_upload
+        elif the user does not access to the database or all datasource
+            1. if schemas_allowed_for_csv_upload is empty
+                a) if database does not support schema
+                    user is unable to upload csv
+                b) if database supports schema
+                    user is unable to upload csv
+            2. if schemas_allowed_for_csv_upload is not empty
+                a) if database does not support schema
+                    This situation is impossible and user is unable to upload csv
+                b) if database supports schema
+                    user is able to upload to schema in schemas_allowed_for_csv_upload
+        """
+        if (
+            security_manager.database_access(database)
+            or security_manager.all_datasource_access()
+        ):
+            return True
+        schemas = database.get_schema_access_for_csv_upload()
+        if schemas and security_manager.schemas_accessible_by_user(
+            database, schemas, False
+        ):
+            return True
+        return False
+
+    name = StringField(
+        _("Table Name"),
+        description=_("Name of table to be created from neo4j data."),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+
+    neo_con_string = StringField(
+        _("Neo Bolt URL"),
+        description=_("Neo4j bolt/bolt+rounting url"),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+
+    username = StringField(
+        _("Username"),
+        description=_("Specify the user name to connect to above neo4j database."),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+
+    password = StringField(
+        _("Password"),
+        description=_("Specify the password to connect to above neo4j database."),
+        validators=[DataRequired()],
+        widget=BS3TextFieldWidget(),
+    )
+
+    con = QuerySelectField(
+        _("Database"),
+        query_factory=csv_allowed_dbs,
+        get_pk=lambda a: a.id,
+        get_label=lambda a: a.database_name,
+    )
+    # schema = StringField(
+    #     _("Schema"),
+    #     description=_("Specify a schema (if database flavor supports this)."),
+    #     validators=[Optional()],
+    #     widget=BS3TextFieldWidget(),
+    # )
+
+    cypher = StringField(
+        _("Cypher Query"),
+        description=_("Specify a cypher query to load)."),
+        validators=[Optional()],
+        widget=BS3TextFieldWidget(),
+    )
+
+    if_exists = SelectField(
+        _("Table Exists"),
+        description=_(
+            "If table exists do one of the following: "
+            "Fail (do nothing), Replace (drop and recreate table) "
+            "or Append (insert data)."
+        ),
+        choices=[
+            ("fail", _("Fail")),
+            ("replace", _("Replace")),
+            ("append", _("Append")),
+        ],
+        validators=[DataRequired()],
+    )
+    # parse_dates = CommaSeparatedListField(
+    #     _("Parse Dates"),
+    #     description=_(
+    #         "A comma separated list of columns that should be " "parsed as dates."
+    #     ),
+    #     filters=[filter_not_empty_values],
+    # )
+    # infer_datetime_format = BooleanField(
+    #     _("Infer Datetime Format"),
+    #     description=_("Use Pandas to interpret the datetime format " "automatically."),
+    # )
+    # index = BooleanField(
+    #     _("Dataframe Index"), description=_("Write dataframe index as a column.")
+    # )
+    # index_label = StringField(
+    #     _("Column Label(s)"),
+    #     description=_(
+    #         "Column label for index column(s). If None is given "
+    #         "and Dataframe Index is True, Index Names are used."
+    #     ),
+    #     validators=[Optional()],
+    #     widget=BS3TextFieldWidget(),
+    # )
